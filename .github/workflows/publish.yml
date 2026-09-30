@@ -23,7 +23,9 @@ jobs:
         with:
           components: clippy, rustfmt
       - name: Check out the Bake core for local development
-        run: git clone --depth 1 https://github.com/socketry/bake-rust.git ../bake-rust
+        run: |
+          git clone --depth 1 https://github.com/socketry/bake-rust.git ../bake-rust
+          git clone --depth 1 https://github.com/socketry/bake-releases-rust.git ../bake-releases-rust
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Run Clippy
