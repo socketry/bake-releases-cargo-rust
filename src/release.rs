@@ -33,13 +33,11 @@ pub(crate) fn release(context: &Context, version: &str, push: bool) -> Result<Va
         ["tag", "-a", &tag, "-m", &format!("Release {tag}")],
     )?;
 
-    if push {
-        if let Err(error) = git_run(context, ["push", "origin", &format!("refs/tags/{tag}")]) {
-            let _ = git_run(context, ["tag", "--delete", &tag]);
-            return Err(Error::new(format!(
-                "created local tag {tag}, but pushing it failed: {error}; the local tag was removed"
-            )));
-        }
+    if push && let Err(error) = git_run(context, ["push", "origin", &format!("refs/tags/{tag}")]) {
+        let _ = git_run(context, ["tag", "--delete", &tag]);
+        return Err(Error::new(format!(
+            "created local tag {tag}, but pushing it failed: {error}; the local tag was removed"
+        )));
     }
 
     Ok(json!({

@@ -98,7 +98,7 @@ pub(crate) fn configure_trusted_publisher(
     let response: ConfigurationResponse = ureq::post(&endpoint)
         .set("Authorization", &token)
         .set("User-Agent", "socketry-bake-releases-cargo")
-        .send_json(&json!({"github_config": requested}))
+        .send_json(json!({"github_config": requested}))
         .map_err(|error| api_error("create trusted publisher configuration", error))?
         .into_json()
         .map_err(|error| Error::new(format!("could not decode crates.io response: {error}")))?;
@@ -114,7 +114,7 @@ pub(crate) fn set_trusted_publishing_only(package: &str, required: bool) -> Resu
     let response = ureq::patch(&endpoint)
         .set("Authorization", &token)
         .set("User-Agent", "socketry-bake-releases-cargo")
-        .send_json(&json!({"crate": {"trustpub_only": required}}))
+        .send_json(json!({"crate": {"trustpub_only": required}}))
         .map_err(|error| api_error("update trusted-publishing requirement", error))?
         .into_json::<Value>()
         .map_err(|error| Error::new(format!("could not decode crates.io response: {error}")))?;

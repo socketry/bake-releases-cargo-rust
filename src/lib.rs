@@ -156,6 +156,7 @@ pub mod releases {
 
                 /// Show the desired repository rulesets and publishing environment.
                 #[bake::task]
+                #[allow(clippy::too_many_arguments)]
                 pub fn plan(
                     context: &mut Context,
                     #[bake(default = "")] repository: String,
@@ -194,6 +195,7 @@ pub mod releases {
                 /// Apply the managed rulesets and create/update the publishing environment.
                 /// Run `releases:cargo:setup:github:plan` first and review its output.
                 #[bake::task]
+                #[allow(clippy::too_many_arguments)]
                 pub fn apply(
                     context: &mut Context,
                     #[bake(default = "")] repository: String,
@@ -255,12 +257,12 @@ pub mod releases {
             ) -> Result<Value> {
                 cargo_helpers::package_by_name(context, &package)?;
                 let repository = github_helpers::Repository::from_origin(context)?;
-                Ok(crates_io::configure_trusted_publisher(
+                crates_io::configure_trusted_publisher(
                     &package,
                     &repository,
                     &workflow,
                     &environment,
-                )?)
+                )
             }
 
             /// Enable or disable crates.io's trusted-publishing-only requirement.
@@ -271,7 +273,7 @@ pub mod releases {
                 #[bake(default = true)] required: bool,
             ) -> Result<Value> {
                 cargo_helpers::package_by_name(context, &package)?;
-                Ok(crates_io::set_trusted_publishing_only(&package, required)?)
+                crates_io::set_trusted_publishing_only(&package, required)
             }
         }
     }

@@ -244,26 +244,25 @@ fn environment_payload(
             .collect();
         payload["prevent_self_review"] = json!(true);
         payload["reviewers"] = json!(reviewers);
-    } else if let Some(existing_rules) = existing_protection_rules {
-        if let Some(review_rule) = existing_rules
+    } else if let Some(existing_rules) = existing_protection_rules
+        && let Some(review_rule) = existing_rules
             .iter()
             .find(|rule| rule.get("type").and_then(JsonValue::as_str) == Some("required_reviewers"))
-        {
-            if let Some(prevent_self_review) = review_rule.get("prevent_self_review") {
-                payload["prevent_self_review"] = prevent_self_review.clone();
-            }
-            if let Some(reviewers) = review_rule.get("reviewers").and_then(JsonValue::as_array) {
-                payload["reviewers"] = json!(
-                    reviewers
-                        .iter()
-                        .filter_map(|reviewer| {
-                            let kind = reviewer.get("type")?.as_str()?;
-                            let identifier = reviewer.get("reviewer")?.get("id")?.as_u64()?;
-                            Some(json!({"type": kind, "id": identifier}))
-                        })
-                        .collect::<Vec<_>>()
-                );
-            }
+    {
+        if let Some(prevent_self_review) = review_rule.get("prevent_self_review") {
+            payload["prevent_self_review"] = prevent_self_review.clone();
+        }
+        if let Some(reviewers) = review_rule.get("reviewers").and_then(JsonValue::as_array) {
+            payload["reviewers"] = json!(
+                reviewers
+                    .iter()
+                    .filter_map(|reviewer| {
+                        let kind = reviewer.get("type")?.as_str()?;
+                        let identifier = reviewer.get("reviewer")?.get("id")?.as_u64()?;
+                        Some(json!({"type": kind, "id": identifier}))
+                    })
+                    .collect::<Vec<_>>()
+            );
         }
     }
 
@@ -300,6 +299,7 @@ fn existing_environment(
     github_api(context, "GET", &path, None).map(Some)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_setup(
     context: &Context,
     repository: &Repository,
