@@ -1,0 +1,20 @@
+[package]
+name = "socketry-bake-releases-cargo"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/socketry/bake-releases-cargo-rust"
+description = "Cargo and GitHub release automation tasks for Bake"
+readme = "readme.md"
+include = ["src/**", "Cargo.toml", "readme.md", "license.md", "releases.md"]
+
+[lib]
+name = "bake_releases_cargo"
+
+[dependencies]
+bake = { package = "socketry-bake", version = "0.1.0", path = "../bake-rust" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ureq = { version = "2.12", features = ["json"] }
+tempfile = "3.27"
+toml_edit = "0.25"
