@@ -48,7 +48,7 @@ pub(crate) fn trusted_publisher_plan(
         "endpoint": format!("{CRATES_IO_API}/trusted_publishing/github_configs"),
         "method": "POST",
         "github_config": configuration,
-        "next": "releases:cargo:trusted_publishing:configure",
+        "next": "releases:cargo:trusted-publishing:configure",
     }))
 }
 

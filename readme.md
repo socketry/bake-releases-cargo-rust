@@ -94,9 +94,9 @@ After a package has been published once, crates.io allows its owners to register
 a GitHub Actions trusted publisher. Preview and apply the configuration with:
 
 ```sh
-cargo bake releases:cargo:trusted_publishing:plan socketry-bake
+cargo bake releases:cargo:trusted-publishing:plan socketry-bake
 export CARGO_REGISTRY_TOKEN=...
-cargo bake releases:cargo:trusted_publishing:configure socketry-bake
+cargo bake releases:cargo:trusted-publishing:configure socketry-bake
 ```
 
 The token must have the crates.io **Trusted Publishing** endpoint scope. For
@@ -116,7 +116,7 @@ trusted-publishing-only mode automatically. Once the GitHub workflow succeeds,
 you can enable that registry requirement:
 
 ```sh
-cargo bake releases:cargo:trusted_publishing:require socketry-bake --required true
+cargo bake releases:cargo:trusted-publishing:require socketry-bake --required true
 ```
 
 Keep that setting disabled until the configured workflow has successfully

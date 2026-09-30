@@ -52,7 +52,7 @@ pub mod releases {
         /// Publish a package once, then register this repository's trusted publisher.
         ///
         /// If publisher registration fails after Cargo accepts the upload, the package
-        /// remains published; rerun `releases:cargo:trusted_publishing:configure` to finish setup.
+        /// remains published; rerun `releases:cargo:trusted-publishing:configure` to finish setup.
         #[bake::task]
         pub fn bootstrap(
             context: &mut Context,
@@ -76,7 +76,7 @@ pub mod releases {
             )
             .map_err(|error| {
                 Error::new(format!(
-                    "{package} was published, but trusted publisher setup failed: {error}; rerun `releases:cargo:trusted_publishing:configure {package}`"
+                    "{package} was published, but trusted publisher setup failed: {error}; rerun `releases:cargo:trusted-publishing:configure {package}`"
                 ))
             })?;
 
@@ -85,7 +85,7 @@ pub mod releases {
                 "initial_publish": "complete",
                 "trusted_publisher": configuration,
                 "trusted_publishing_only": false,
-                "next": format!("Review the workflow and publisher configuration, then run releases:cargo:trusted_publishing:require {package} --required true when ready."),
+                "next": format!("Review the workflow and publisher configuration, then run releases:cargo:trusted-publishing:require {package} --required true when ready."),
             }))
         }
 
