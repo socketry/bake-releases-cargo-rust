@@ -1,12 +1,12 @@
 # Bake Cargo Releases
 
-`socketry-bake-releases-cargo` provides reusable Bake tasks for Cargo workspace
+`bake-releases-cargo` provides reusable Bake tasks for Cargo workspace
 releases. Tasks are registered beneath `releases:cargo`. Add the package to an
 unpublished `bake/` task binary and link it once:
 
 ```toml
 [dependencies]
-bake-releases-cargo = { package = "socketry-bake-releases-cargo", version = "0.1" }
+bake-releases-cargo = { version = "0.1" }
 ```
 
 ```rust,ignore

@@ -184,11 +184,14 @@ jobs:
         env:
           BAKE_PACKAGES: '{names}'
         run: |
-          cargo metadata --format-version 1 --no-deps --locked > "$RUNNER_TEMP/bake-metadata.json"
+          cargo metadata --format-version 1 --locked > "$RUNNER_TEMP/bake-metadata.json"
           python3 - <<'PY'
           import json
           import os
           from pathlib import Path
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
 
           tag = os.environ["GITHUB_REF_NAME"]
           if not tag.startswith("v"):
@@ -196,18 +199,41 @@ jobs:
           version = tag[1:]
           metadata = json.loads((Path(os.environ["RUNNER_TEMP"]) / "bake-metadata.json").read_text())
           names = json.loads(os.environ["BAKE_PACKAGES"])
-          by_name = {{package["name"]: package for package in metadata["packages"]}}
+          workspace_members = set(metadata["workspace_members"])
+          by_name = {{package["name"]: package for package in metadata["packages"] if package["id"] in workspace_members}}
           mismatched = [name for name in names if name not in by_name or by_name[name]["version"] != version]
           if mismatched:
               raise SystemExit(f"Tag version {{version}} does not match workspace packages: {{', '.join(mismatched)}}")
+          existing = []
+          for name in names:
+              url = f"https://crates.io/api/v1/crates/{{quote(name, safe='')}}/versions"
+              request = Request(url, headers={{"User-Agent": "socketry-bake-publish-workflow"}})
+              try:
+                  with urlopen(request, timeout=30) as response:
+                      registry = json.load(response)
+              except HTTPError as error:
+                  if error.code == 404:
+                      continue
+                  raise SystemExit(f"Could not check crates.io for {{name}}: HTTP {{error.code}}")
+              except (URLError, TimeoutError, json.JSONDecodeError) as error:
+                  raise SystemExit(f"Could not check crates.io for {{name}}: {{error}}")
+              versions = registry.get("versions")
+              if not isinstance(versions, list):
+                  raise SystemExit(f"Unexpected crates.io response while checking {{name}}")
+              if any(item.get("num") == version for item in versions if isinstance(item, dict)):
+                  existing.append(name)
+          missing = [name for name in names if name not in existing]
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"packages={{json.dumps(names)}}\n")
+              output.write(f"exclude={{json.dumps(existing)}}\n")
+              output.write(f"has_packages={{'true' if missing else 'false'}}\n")
           PY
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
+        if: steps.packages.outputs.has_packages == 'true'
       - name: Publish workspace packages
+        if: steps.packages.outputs.has_packages == 'true'
         env:
-          BAKE_PACKAGES: ${{{{ steps.packages.outputs.packages }}}}
+          BAKE_EXCLUDE: ${{{{ steps.packages.outputs.exclude }}}}
           CARGO_REGISTRY_TOKEN: ${{{{ steps.auth.outputs.token }}}}
         run: |
           python3 - <<'PY'
@@ -215,9 +241,9 @@ jobs:
           import os
           import subprocess
 
-          arguments = ["cargo", "publish", "--locked"]
-          for package in json.loads(os.environ["BAKE_PACKAGES"]):
-              arguments.extend(["--package", package])
+          arguments = ["cargo", "publish", "--workspace", "--locked"]
+          for package in json.loads(os.environ["BAKE_EXCLUDE"]):
+              arguments.extend(["--exclude", package])
           subprocess.run(arguments, check=True)
           PY
 "#

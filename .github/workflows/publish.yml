@@ -48,26 +48,55 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Check out the Bake core for local development
         run: git clone --depth 1 https://github.com/socketry/bake-rust.git ../bake-rust
-      - name: Validate version from release tag
+      - name: Find package version to publish
+        id: packages
+        shell: bash
         run: |
-          cargo metadata --format-version 1 --no-deps --locked > "$RUNNER_TEMP/metadata.json"
+          cargo metadata --format-version 1 --locked > "$RUNNER_TEMP/metadata.json"
           python3 - <<'PY'
           import json
           import os
           from pathlib import Path
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
 
           tag = os.environ["GITHUB_REF_NAME"]
           if not tag.startswith("v"):
               raise SystemExit(f"Unsupported release tag: {tag}")
           version = tag[1:]
           metadata = json.loads((Path(os.environ["RUNNER_TEMP"]) / "metadata.json").read_text())
-          if len(metadata["packages"]) != 1 or metadata["packages"][0]["version"] != version:
-              actual = [item["version"] for item in metadata["packages"]]
+          workspace_members = set(metadata["workspace_members"])
+          packages = [item for item in metadata["packages"] if item["id"] in workspace_members]
+          if len(packages) != 1 or packages[0]["version"] != version:
+              actual = [item["version"] for item in packages]
               raise SystemExit(f"Tag version {version} does not match package version {actual}")
+          package = packages[0]
+          url = f"https://crates.io/api/v1/crates/{quote(package['name'], safe='')}/versions"
+          request = Request(url, headers={"User-Agent": "socketry-bake-publish-workflow"})
+          existing = False
+          try:
+              with urlopen(request, timeout=30) as response:
+                  registry = json.load(response)
+          except HTTPError as error:
+              if error.code != 404:
+                  raise SystemExit(f"Could not check crates.io for {package['name']}: HTTP {error.code}")
+              registry = None
+          except (URLError, TimeoutError, json.JSONDecodeError) as error:
+              raise SystemExit(f"Could not check crates.io for {package['name']}: {error}")
+          if registry is not None:
+              versions = registry.get("versions")
+              if not isinstance(versions, list):
+                  raise SystemExit(f"Unexpected crates.io response while checking {package['name']}")
+              existing = any(item.get("num") == version for item in versions if isinstance(item, dict))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"has_packages={'false' if existing else 'true'}\n")
           PY
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
+        if: steps.packages.outputs.has_packages == 'true'
       - name: Publish package
+        if: steps.packages.outputs.has_packages == 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: cargo publish --workspace --locked

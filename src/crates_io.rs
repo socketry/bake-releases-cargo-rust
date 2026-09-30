@@ -97,7 +97,7 @@ pub(crate) fn configure_trusted_publisher(
     let endpoint = format!("{CRATES_IO_API}/trusted_publishing/github_configs");
     let response: ConfigurationResponse = ureq::post(&endpoint)
         .set("Authorization", &token)
-        .set("User-Agent", "socketry-bake-releases-cargo")
+        .set("User-Agent", "bake-releases-cargo")
         .send_json(json!({"github_config": requested}))
         .map_err(|error| api_error("create trusted publisher configuration", error))?
         .into_json()
@@ -113,7 +113,7 @@ pub(crate) fn set_trusted_publishing_only(package: &str, required: bool) -> Resu
     let endpoint = format!("{CRATES_IO_API}/crates/{package}");
     let response = ureq::patch(&endpoint)
         .set("Authorization", &token)
-        .set("User-Agent", "socketry-bake-releases-cargo")
+        .set("User-Agent", "bake-releases-cargo")
         .send_json(json!({"crate": {"trustpub_only": required}}))
         .map_err(|error| api_error("update trusted-publishing requirement", error))?
         .into_json::<Value>()
@@ -132,7 +132,7 @@ fn list_trusted_publishers(token: &str, package: &str) -> Result<Vec<TrustedPubl
     let endpoint = format!("{CRATES_IO_API}/trusted_publishing/github_configs?crate={package}");
     let response: ConfigurationsResponse = ureq::get(&endpoint)
         .set("Authorization", token)
-        .set("User-Agent", "socketry-bake-releases-cargo")
+        .set("User-Agent", "bake-releases-cargo")
         .call()
         .map_err(|error| api_error("list trusted publisher configurations", error))?
         .into_json()
