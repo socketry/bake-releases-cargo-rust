@@ -143,13 +143,11 @@ fn set_workspace_version(
         .iter()
         .map(|package| package.name.as_str())
         .collect();
-    let mut manifests = BTreeSet::new();
-    manifests.insert(workspace_manifest(context)?);
-    manifests.extend(
-        packages
-            .iter()
-            .map(|package| PathBuf::from(&package.manifest_path)),
-    );
+    let (workspace_manifest, manifests) = workspace_manifests(context)?;
+    let publishable_manifests: HashSet<_> = packages
+        .iter()
+        .map(|package| PathBuf::from(&package.manifest_path))
+        .collect();
 
     let mut updated = Vec::new();
     for path in manifests {
@@ -158,8 +156,12 @@ fn set_workspace_version(
         let mut document: DocumentMut = source
             .parse()
             .map_err(|error| Error::new(format!("{}: {error}", path.display())))?;
-        update_package_version(&mut document, current, target)?;
-        update_workspace_version(&mut document, current, target)?;
+        if publishable_manifests.contains(&path) {
+            update_package_version(&mut document, current, target)?;
+        }
+        if path == workspace_manifest {
+            update_workspace_version(&mut document, current, target)?;
+        }
         update_local_dependency_versions(&mut document, target, &package_names);
         updated.push((path, document.to_string()));
     }
@@ -185,7 +187,7 @@ fn set_workspace_version(
     }))
 }
 
-fn workspace_manifest(context: &Context) -> Result<PathBuf> {
+fn workspace_manifests(context: &Context) -> Result<(PathBuf, BTreeSet<PathBuf>)> {
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
     let output = context
         .command(cargo)
@@ -203,7 +205,20 @@ fn workspace_manifest(context: &Context) -> Result<PathBuf> {
         .get("workspace_root")
         .and_then(serde_json::Value::as_str)
         .ok_or_else(|| Error::new("Cargo metadata did not contain a workspace root"))?;
-    Ok(Path::new(root).join("Cargo.toml"))
+    let workspace_manifest = Path::new(root).join("Cargo.toml");
+    let packages = metadata
+        .get("packages")
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| Error::new("Cargo metadata did not contain a packages array"))?;
+    let mut manifests = BTreeSet::from([workspace_manifest.clone()]);
+    for package in packages {
+        let manifest = package
+            .get("manifest_path")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| Error::new("Cargo metadata package has no manifest path"))?;
+        manifests.insert(PathBuf::from(manifest));
+    }
+    Ok((workspace_manifest, manifests))
 }
 
 fn update_package_version(
