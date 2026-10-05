@@ -6,7 +6,7 @@ unpublished `bake/` task binary and link it once:
 
 ```toml
 [dependencies]
-bake-releases-cargo = { version = "0.1" }
+bake-releases-cargo = { version = "0.2" }
 ```
 
 ```rust,ignore
@@ -147,6 +147,27 @@ package version fields and local dependency requirements, but does not commit
 changes or publish GitHub Releases. It does not configure branch rulesets other
 than its named managed rulesets, and GitHub may require repository or organization
 plan features for some settings.
+
+## Releases
+
+<!-- bake-readme:releases:start -->
+See [releases.md](releases.md) for the full release history.
+
+### v0.2.0
+
+- Migrate public task interfaces from `socketry-bake` to `bake >=0.18.0`.
+- Generate tag-based publishing workflows that perform registry checks and package publication through Bake tasks.
+- Add `releases:cargo:publish:pending` and `releases:cargo:publish:workspace` tasks.
+- Include publishing guidance in the published package's agent context.
+- Clean up GitHub API subprocesses when writing their request body fails.
+
+### v0.1.0
+
+- Move the Cargo, GitHub, and crates.io release tasks into their own repository.
+- Support Cargo workspace discovery, publishing workflow setup, and trusted publishing.
+- Add shared workspace version bumps and a tag-based release task.
+- Skip package versions already published when running generated release workflows.
+<!-- bake-readme:releases:end -->
 
 ## Contributing
 

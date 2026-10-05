@@ -1,3 +1,6 @@
+// Released under the MIT License.
+// Copyright, 2026, by Samuel Williams.
+
 use bake::{Error, Result, Value};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
