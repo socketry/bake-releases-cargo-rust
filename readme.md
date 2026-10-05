@@ -1,14 +1,11 @@
-# Bake Cargo Releases
+# `bake-releases-cargo`
 
-`bake-releases-cargo` provides reusable Bake tasks for Cargo workspace releases. Tasks are registered beneath `releases:cargo`. Add the package to an unpublished `bake/` task binary and link it once:
+`bake-releases-cargo` provides reusable Bake tasks for Cargo workspace releases. Tasks are registered beneath `releases:cargo`. Add the package to an unpublished `bake/` task binary and regenerate its task links:
 
-```toml
-[dependencies]
-bake-releases-cargo = { version = "0.2" }
-```
-
-```rust,ignore
-use bake_releases_cargo as _;
+```sh
+cargo bake --regenerate
+cargo add --manifest-path bake/Cargo.toml bake-releases-cargo
+cargo bake --regenerate
 ```
 
 Follow the shared [Socketry Rust conventions](https://github.com/socketry/socketry-project-rust/blob/main/context/conventions.md).
@@ -90,6 +87,10 @@ Keep that setting disabled until the configured workflow has successfully publis
 
 The release integration supports crates.io and GitHub Actions. It edits Cargo package version fields and local dependency requirements, but does not commit changes or publish GitHub Releases. It does not configure branch rulesets other than its named managed rulesets, and GitHub may require repository or organization plan features for some settings.
 
+## Releasing
+
+Prepare a release with `cargo bake cargo:version:patch` (or `minor`, `major`, or `bump --version X.Y.Z`), then run `cargo bake cargo:release` and open a pull request. After review and merge, GitHub Actions publishes the release when the configured `crates-io` environment approves it. Follow the shared [Releasing skill](https://github.com/socketry/socketry-project-rust/blob/main/context/releasing.md) for the standard process.
+
 ## Releases
 
 <!-- bake-readme:releases:start -->
@@ -117,6 +118,11 @@ See [releases.md](releases.md) for the full release history.
 - Skip package versions already published when running generated release workflows.
 
 <!-- bake-readme:releases:end -->
+
+## See Also
+
+- [`bake-cargo`](https://github.com/socketry/bake-cargo-rust).
+- [`bake-releases`](https://github.com/socketry/bake-releases-rust).
 
 ## Contributing
 
