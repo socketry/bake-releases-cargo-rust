@@ -426,7 +426,7 @@ mod tests {
             ),
         );
         environment.remove("CARGO");
-        environment.prepend_path(&proxy.parent().unwrap().to_path_buf());
+        environment.prepend_path(proxy.parent().unwrap());
         project.single_package("fixture", "1.2.3");
 
         let context = project.context();

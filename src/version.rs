@@ -694,7 +694,7 @@ value = "not a dependency group"
         project.single_package("fixture", "1.2.3");
         project.cargo_proxy(&mut environment, None);
 
-        let result = set(&mut project.context(), "1.2.4").unwrap();
+        let result = set(&project.context(), "1.2.4").unwrap();
 
         assert_eq!(result["previous_version"], "1.2.3");
         assert_eq!(result["version"], "1.2.4");
@@ -713,12 +713,12 @@ value = "not a dependency group"
         empty_metadata_proxy(&project, &mut environment);
 
         assert!(workspace_version(&project.context()).is_err());
-        assert!(increment(&mut project.context(), Component::Patch).is_err());
-        assert!(set(&mut project.context(), "1.2.4").is_err());
+        assert!(increment(&project.context(), Component::Patch).is_err());
+        assert!(set(&project.context(), "1.2.4").is_err());
 
         environment.set("CARGO", project.root().join("missing-cargo").as_os_str());
         assert!(workspace_version(&project.context()).is_err());
-        assert!(set(&mut project.context(), "1.2.4").is_err());
+        assert!(set(&project.context(), "1.2.4").is_err());
     }
 
     #[test]
@@ -736,7 +736,7 @@ value = "not a dependency group"
             "18446744073709551615.0.0",
         );
 
-        assert!(increment(&mut project.context(), Component::Major).is_err());
+        assert!(increment(&project.context(), Component::Major).is_err());
     }
 
     #[test]
@@ -756,7 +756,7 @@ value = "not a dependency group"
         project.write("crates/fixture/src/lib.rs", "// fixture\n");
         metadata_proxy(&project, &mut environment, &manifest, "1.2.3");
 
-        let result = set(&mut project.context(), "1.2.4").unwrap();
+        let result = set(&project.context(), "1.2.4").unwrap();
 
         assert_eq!(result["version"], "1.2.4");
         let root = std::fs::read_to_string(project.root().join("Cargo.toml")).unwrap();
@@ -852,12 +852,12 @@ value = "not a dependency group"
         project.single_package("fixture", "1.2.3");
         project.cargo_proxy(&mut environment, None);
         environment.set("BAKE_TEST_VERSION_IO_FAILURE", "metadata");
-        assert!(set(&mut project.context(), "1.2.4").is_err());
+        assert!(set(&project.context(), "1.2.4").is_err());
 
         environment.remove("BAKE_TEST_VERSION_IO_FAILURE");
         project.cargo_proxy(&mut environment, Some("update"));
         assert!(
-            set(&mut project.context(), "1.2.5")
+            set(&project.context(), "1.2.5")
                 .unwrap_err()
                 .to_string()
                 .contains("could not update Cargo.lock")
@@ -910,26 +910,26 @@ value = "not a dependency group"
         project.single_package("fixture", "1.2.3");
         project.cargo_proxy(&mut environment, None);
 
-        increment(&mut project.context(), Component::Minor).unwrap();
+        increment(&project.context(), Component::Minor).unwrap();
         assert!(
             std::fs::read_to_string(project.root().join("Cargo.toml"))
                 .unwrap()
                 .contains("version = \"1.3.0\"")
         );
         assert!(
-            set(&mut project.context(), "1.3.0")
+            set(&project.context(), "1.3.0")
                 .unwrap_err()
                 .to_string()
                 .contains("must be greater")
         );
         assert!(
-            set(&mut project.context(), "1.2.9")
+            set(&project.context(), "1.2.9")
                 .unwrap_err()
                 .to_string()
                 .contains("must be greater")
         );
         assert!(
-            set(&mut project.context(), "invalid")
+            set(&project.context(), "invalid")
                 .unwrap_err()
                 .to_string()
                 .contains("stable MAJOR.MINOR.PATCH")

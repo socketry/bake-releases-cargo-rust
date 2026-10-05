@@ -410,9 +410,7 @@ mod tests {
     fn recognizes_an_existing_trusted_publisher_case_insensitively() {
         let mut environment = Environment::new();
         environment.set("CARGO_REGISTRY_TOKEN", "secret");
-        let configuration = format!(
-            "{{\"github_configs\":[{{\"id\":1,\"crate\":\"fixture\",\"repository_owner\":\"SOCKETRY\",\"repository_name\":\"FIXTURE\",\"workflow_filename\":\"publish.yml\",\"environment\":\"crates-io\"}}]}}"
-        );
+        let configuration = r#"{"github_configs":[{"id":1,"crate":"fixture","repository_owner":"SOCKETRY","repository_name":"FIXTURE","workflow_filename":"publish.yml","environment":"crates-io"}]}"#.to_string();
         let (api, server) = http_server(vec![(200, configuration)]);
         environment.set("BAKE_TEST_CRATES_IO_API", &api);
 

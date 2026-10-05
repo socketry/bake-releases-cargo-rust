@@ -561,7 +561,7 @@ mod tests {
             "https://github.com/socketry/project/extra",
             "https://github.com/bad owner/project",
         ] {
-            std::fs::write(&git, &format!("#!/bin/sh\necho '{remote}'\n")).unwrap();
+            std::fs::write(&git, format!("#!/bin/sh\necho '{remote}'\n")).unwrap();
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
