@@ -1,3 +1,6 @@
+// Released under the MIT License.
+// Copyright, 2026, by Samuel Williams.
+
 use bake::{Context, Error, Result, Value};
 use serde_json::{Value as JsonValue, json};
 use std::io::{self, Write};
