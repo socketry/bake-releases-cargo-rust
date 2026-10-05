@@ -109,7 +109,7 @@ pub(crate) fn publication_state(
     context: &Context,
     version: &str,
 ) -> Result<(Vec<WorkspacePackage>, Vec<WorkspacePackage>)> {
-    let current = crate::version::workspace_version(context)?;
+    let current = crate::version_support::workspace_version(context)?;
     if current != version {
         return Err(Error::new(format!(
             "release version {version:?} does not match the workspace version {current}"

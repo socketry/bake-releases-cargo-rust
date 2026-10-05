@@ -1,5 +1,9 @@
 # Releases
 
+## v0.2.2
+
+- Expose task APIs at the crate root while preserving legacy function and descriptor paths and registered command names.
+
 ## v0.2.1
 
 - Adopt `socketry-project` 0.3.7 for shared project tasks and Markdown normalization.

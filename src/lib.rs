@@ -12,375 +12,376 @@ mod github;
 mod release;
 #[cfg(test)]
 mod test_support;
-mod version;
+mod version_support;
 
-/// Cargo release and publication tasks.
-pub mod releases {
-    /// Tasks and helpers for publishing Cargo packages from GitHub Actions.
-    pub mod cargo {
-        use bake::{Context, Error, Result, Value};
-        use serde_json::json;
-        use std::fs;
-        use std::path::PathBuf;
+use bake::{Context, Error, Result, Value};
+use serde_json::json;
+use std::fs;
+use std::path::PathBuf;
 
-        use crate::{cargo as cargo_helpers, crates_io, github as github_helpers};
+use crate::{cargo as cargo_helpers, github as github_helpers};
 
-        /// Package the publishable workspace, create a version tag, and push it to origin.
-        /// The configured GitHub Actions workflow publishes the workspace after the tag arrives.
-        #[bake::task]
-        pub fn release(context: &mut Context, #[bake(default = true)] push: bool) -> Result<Value> {
-            let version = crate::version::workspace_version(context)?;
-            crate::release::release(context, &version, push)
-        }
+/// Package the publishable workspace, create a version tag, and push it to origin.
+/// The configured GitHub Actions workflow publishes the workspace after the tag arrives.
+#[bake::task]
+pub fn release(context: &mut Context, #[bake(default = true)] push: bool) -> Result<Value> {
+    let version = crate::version_support::workspace_version(context)?;
+    crate::release::release(context, &version, push)
+}
 
-        /// List publishable packages in the current Cargo workspace.
-        #[bake::task]
-        pub fn packages(context: &mut Context) -> Result<Value> {
-            Ok(json!(cargo_helpers::workspace_packages(context)?))
-        }
+/// List publishable packages in the current Cargo workspace.
+#[bake::task]
+pub fn packages(context: &mut Context) -> Result<Value> {
+    Ok(json!(cargo_helpers::workspace_packages(context)?))
+}
 
-        /// Build and validate the package archive for one workspace package.
-        #[bake::task(name = "package")]
-        pub fn create_package_archive(context: &mut Context, package: String) -> Result<String> {
-            cargo_helpers::run_cargo(context, ["package", "--locked", "--package", &package])?;
-            Ok(format!("Packaged {package}"))
-        }
+/// Build and validate the package archive for one workspace package.
+#[bake::task(name = "releases:cargo:package")]
+pub fn create_package_archive(context: &mut Context, package: String) -> Result<String> {
+    cargo_helpers::run_cargo(context, ["package", "--locked", "--package", &package])?;
+    Ok(format!("Packaged {package}"))
+}
 
-        /// Publish one workspace package to crates.io using the configured Cargo credentials.
-        #[bake::task]
-        pub fn publish(context: &mut Context, package: String) -> Result<String> {
-            cargo_helpers::run_cargo(context, ["publish", "--locked", "--package", &package])?;
-            Ok(format!("Published {package}"))
-        }
+/// Publish one workspace package to crates.io using the configured Cargo credentials.
+#[bake::task]
+pub fn publish(context: &mut Context, package: String) -> Result<String> {
+    cargo_helpers::run_cargo(context, ["publish", "--locked", "--package", &package])?;
+    Ok(format!("Published {package}"))
+}
 
-        /// Report which workspace packages for a release version still need publishing.
-        #[bake::task(name = "releases:cargo:publish:pending")]
-        pub fn publish_pending(context: &mut Context, version: String) -> Result<Value> {
-            let (pending, published) = cargo_helpers::publication_state(context, &version)?;
-            let has_packages = !pending.is_empty();
-            cargo_helpers::append_github_output("version", &version)?;
-            cargo_helpers::append_github_output(
-                "has_packages",
-                if has_packages { "true" } else { "false" },
-            )?;
+/// Report which workspace packages for a release version still need publishing.
+#[bake::task(name = "releases:cargo:publish:pending")]
+pub fn publish_pending(context: &mut Context, version: String) -> Result<Value> {
+    let (pending, published) = cargo_helpers::publication_state(context, &version)?;
+    let has_packages = !pending.is_empty();
+    cargo_helpers::append_github_output("version", &version)?;
+    cargo_helpers::append_github_output(
+        "has_packages",
+        if has_packages { "true" } else { "false" },
+    )?;
 
-            Ok(json!({
-                "version": version,
-                "has_packages": has_packages,
-                "pending": pending.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
-                "published": published.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
-            }))
-        }
+    Ok(json!({
+        "version": version,
+        "has_packages": has_packages,
+        "pending": pending.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
+        "published": published.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
+    }))
+}
 
-        /// Publish workspace packages that do not yet exist at the requested version.
-        #[bake::task(name = "releases:cargo:publish:workspace")]
-        pub fn publish_workspace(context: &mut Context, version: String) -> Result<Value> {
-            let (pending, published) = cargo_helpers::publication_state(context, &version)?;
-            if pending.is_empty() {
-                return Ok(json!({
-                    "version": version,
-                    "published": [],
-                    "already_published": published.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
-                }));
-            }
-
-            let mut arguments = vec![
-                "publish".to_owned(),
-                "--workspace".to_owned(),
-                "--locked".to_owned(),
-            ];
-            for package in &published {
-                arguments.extend(["--exclude".to_owned(), package.name.clone()]);
-            }
-            cargo_helpers::run_cargo_arguments(context, &arguments)?;
-
-            Ok(json!({
-                "version": version,
-                "published": pending.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
-                "already_published": published.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
-            }))
-        }
-
-        /// Publish a package once, then register this repository's trusted publisher.
-        ///
-        /// If publisher registration fails after Cargo accepts the upload, the package
-        /// remains published; rerun `releases:cargo:trusted-publishing:configure` to finish setup.
-        #[bake::task]
-        pub fn bootstrap(
-            context: &mut Context,
-            package: String,
-            #[bake(default = "publish.yml")] workflow: String,
-            #[bake(default = "crates-io")] environment: String,
-        ) -> Result<Value> {
-            cargo_helpers::package_by_name(context, &package)?;
-            let repository = github_helpers::Repository::from_origin(context)?;
-            crates_io::validate_trusted_publisher_inputs(&package, &workflow, &environment)?;
-            cargo_helpers::run_cargo(context, ["publish", "--locked", "--package", &package])
-                .map_err(|error| {
-                    Error::new(format!("initial crates.io publication failed: {error}"))
-                })?;
-
-            let configuration = crates_io::configure_trusted_publisher(
-                &package,
-                &repository,
-                &workflow,
-                &environment,
-            )
-            .map_err(|error| {
-                Error::new(format!(
-                    "{package} was published, but trusted publisher setup failed: {error}; rerun `releases:cargo:trusted-publishing:configure {package}`"
-                ))
-            })?;
-
-            Ok(json!({
-                "package": package,
-                "initial_publish": "complete",
-                "trusted_publisher": configuration,
-                "trusted_publishing_only": false,
-                "next": format!("Review the workflow and publisher configuration, then run releases:cargo:trusted-publishing:require {package} --required true when ready."),
-            }))
-        }
-
-        /// Generate or update the GitHub Actions workflow for workspace package publication.
-        /// Existing files are preserved unless `--force true` is supplied.
-        pub mod setup {
-            use super::*;
-
-            /// Write `.github/workflows/publish.yml` for the current workspace.
-            #[bake::task]
-            pub fn workflow(
-                context: &mut Context,
-                #[bake(default = "publish.yml")] filename: String,
-                #[bake(default = "main")] branch: String,
-                #[bake(default = false)] force: bool,
-            ) -> Result<String> {
-                let packages = cargo_helpers::workspace_packages(context)?;
-                if packages.is_empty() {
-                    return Err(Error::new("the workspace has no publishable packages"));
-                }
-                github_helpers::validate_branch(&branch)?;
-                if PathBuf::from(&filename).components().count() != 1
-                    || filename.is_empty()
-                    || !filename.ends_with(".yml") && !filename.ends_with(".yaml")
-                {
-                    return Err(Error::new(
-                        "workflow filename must be a single .yml or .yaml filename",
-                    ));
-                }
-
-                let contents = cargo_helpers::publish_workflow(&packages, &branch)?;
-                let path = context
-                    .root()
-                    .join(".github")
-                    .join("workflows")
-                    .join(filename);
-                let parent = path
-                    .parent()
-                    .unwrap_or_else(|| unreachable!("workflow paths always have a parent"));
-                fs::create_dir_all(parent)?;
-
-                if path.exists() {
-                    let existing = fs::read_to_string(&path)?;
-                    if existing == contents {
-                        return Ok(format!(
-                            "{} already matches the generated workflow",
-                            path.display()
-                        ));
-                    }
-                    if !force {
-                        return Err(Error::new(format!(
-                            "{} already exists and differs; review it, or pass --force true to replace it",
-                            path.display()
-                        )));
-                    }
-                }
-
-                write_workflow_file(&path, &contents)?;
-                Ok(format!(
-                    "Generated {} for {} package(s)",
-                    path.display(),
-                    packages.len()
-                ))
-            }
-
-            fn write_workflow_file(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
-                #[cfg(test)]
-                if std::env::var_os("BAKE_TEST_WORKFLOW_WRITE_FAILURE").is_some() {
-                    return Err(std::io::Error::other("injected workflow write failure"));
-                }
-
-                fs::write(path, contents)
-            }
-
-            /// GitHub repository ruleset and environment setup tasks.
-            pub mod github {
-                use super::super::*;
-
-                /// Show the desired repository rulesets and publishing environment.
-                #[bake::task]
-                #[allow(clippy::too_many_arguments)]
-                pub fn plan(
-                    context: &mut Context,
-                    #[bake(default = "")] repository: String,
-                    #[bake(default = "main")] branch: String,
-                    #[bake(default = 1)] approvals: u32,
-                    checks: Vec<String>,
-                    reviewers: Vec<String>,
-                    wait_timer: Option<u32>,
-                    #[bake(default = "crates-io")] environment: String,
-                ) -> Result<Value> {
-                    let repository = github_helpers::Repository::resolve(context, &repository)?;
-                    github_helpers::validate_setup(
-                        &branch,
-                        approvals,
-                        &checks,
-                        &reviewers,
-                        wait_timer,
-                        &environment,
-                    )?;
-                    let packages = cargo_helpers::workspace_packages(context)?;
-                    if packages.is_empty() {
-                        return Err(Error::new("the workspace has no publishable packages"));
-                    }
-                    let checks = github_helpers::effective_checks(&checks);
-                    Ok(github_helpers::setup_plan(
-                        &repository,
-                        &branch,
-                        approvals,
-                        &checks,
-                        &reviewers,
-                        wait_timer,
-                        &environment,
-                    ))
-                }
-
-                /// Apply the managed rulesets and create/update the publishing environment.
-                /// Run `releases:cargo:setup:github:plan` first and review its output.
-                #[bake::task]
-                #[allow(clippy::too_many_arguments)]
-                pub fn apply(
-                    context: &mut Context,
-                    #[bake(default = "")] repository: String,
-                    #[bake(default = "main")] branch: String,
-                    #[bake(default = 1)] approvals: u32,
-                    checks: Vec<String>,
-                    reviewers: Vec<String>,
-                    wait_timer: Option<u32>,
-                    #[bake(default = "crates-io")] environment: String,
-                ) -> Result<Value> {
-                    let repository = github_helpers::Repository::resolve(context, &repository)?;
-                    github_helpers::validate_setup(
-                        &branch,
-                        approvals,
-                        &checks,
-                        &reviewers,
-                        wait_timer,
-                        &environment,
-                    )?;
-                    let checks = github_helpers::effective_checks(&checks);
-                    github_helpers::apply_setup(
-                        context,
-                        &repository,
-                        &branch,
-                        approvals,
-                        &checks,
-                        &reviewers,
-                        wait_timer,
-                        &environment,
-                    )
-                }
-            }
-        }
-
-        /// Configure crates.io's GitHub Actions trusted publisher for one package.
-        pub mod trusted_publishing {
-            use super::*;
-
-            /// Show the trusted publisher configuration that would be registered.
-            #[bake::task]
-            pub fn plan(
-                context: &mut Context,
-                package: String,
-                #[bake(default = "publish.yml")] workflow: String,
-                #[bake(default = "crates-io")] environment: String,
-            ) -> Result<Value> {
-                cargo_helpers::package_by_name(context, &package)?;
-                let repository = github_helpers::Repository::from_origin(context)?;
-                crates_io::trusted_publisher_plan(&package, &repository, &workflow, &environment)
-            }
-
-            /// Add the GitHub Actions trusted publisher configuration on crates.io.
-            #[bake::task]
-            pub fn configure(
-                context: &mut Context,
-                package: String,
-                #[bake(default = "publish.yml")] workflow: String,
-                #[bake(default = "crates-io")] environment: String,
-            ) -> Result<Value> {
-                cargo_helpers::package_by_name(context, &package)?;
-                let repository = github_helpers::Repository::from_origin(context)?;
-                crates_io::configure_trusted_publisher(
-                    &package,
-                    &repository,
-                    &workflow,
-                    &environment,
-                )
-            }
-
-            /// Enable or disable crates.io's trusted-publishing-only requirement.
-            #[bake::task]
-            pub fn require(
-                context: &mut Context,
-                package: String,
-                #[bake(default = true)] required: bool,
-            ) -> Result<Value> {
-                cargo_helpers::package_by_name(context, &package)?;
-                crates_io::set_trusted_publishing_only(&package, required)
-            }
-        }
+/// Publish workspace packages that do not yet exist at the requested version.
+#[bake::task(name = "releases:cargo:publish:workspace")]
+pub fn publish_workspace(context: &mut Context, version: String) -> Result<Value> {
+    let (pending, published) = cargo_helpers::publication_state(context, &version)?;
+    if pending.is_empty() {
+        return Ok(json!({
+            "version": version,
+            "published": [],
+            "already_published": published.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
+        }));
     }
 
-    /// Change the shared stable version of the publishable Cargo workspace packages.
-    pub mod version {
-        use bake::{Context, Result, Value};
+    let mut arguments = vec![
+        "publish".to_owned(),
+        "--workspace".to_owned(),
+        "--locked".to_owned(),
+    ];
+    for package in &published {
+        arguments.extend(["--exclude".to_owned(), package.name.clone()]);
+    }
+    cargo_helpers::run_cargo_arguments(context, &arguments)?;
 
-        /// Increment the patch component of the workspace version.
-        #[bake::task(name = "releases:version:patch")]
-        pub fn patch(context: &mut Context) -> Result<Value> {
-            crate::version::increment(context, crate::version::Component::Patch)
+    Ok(json!({
+        "version": version,
+        "published": pending.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
+        "already_published": published.iter().map(|package| package.name.as_str()).collect::<Vec<_>>(),
+    }))
+}
+
+/// Publish a package once, then register this repository's trusted publisher.
+///
+/// If publisher registration fails after Cargo accepts the upload, the package
+/// remains published; rerun `releases:cargo:trusted-publishing:configure` to finish setup.
+#[bake::task]
+pub fn bootstrap(
+    context: &mut Context,
+    package: String,
+    #[bake(default = "publish.yml")] workflow: String,
+    #[bake(default = "crates-io")] environment: String,
+) -> Result<Value> {
+    cargo_helpers::package_by_name(context, &package)?;
+    let repository = github_helpers::Repository::from_origin(context)?;
+    crates_io::validate_trusted_publisher_inputs(&package, &workflow, &environment)?;
+    cargo_helpers::run_cargo(context, ["publish", "--locked", "--package", &package])
+        .map_err(|error| Error::new(format!("initial crates.io publication failed: {error}")))?;
+
+    let configuration = crates_io::configure_trusted_publisher(
+        &package,
+        &repository,
+        &workflow,
+        &environment,
+    )
+    .map_err(|error| {
+        Error::new(format!(
+            "{package} was published, but trusted publisher setup failed: {error}; rerun `releases:cargo:trusted-publishing:configure {package}`"
+        ))
+    })?;
+
+    Ok(json!({
+        "package": package,
+        "initial_publish": "complete",
+        "trusted_publisher": configuration,
+        "trusted_publishing_only": false,
+        "next": format!("Review the workflow and publisher configuration, then run releases:cargo:trusted-publishing:require {package} --required true when ready."),
+    }))
+}
+
+/// Generate or update the GitHub Actions workflow for workspace package publication.
+/// Existing files are preserved unless `--force true` is supplied.
+pub mod setup {
+    use super::*;
+
+    /// Write `.github/workflows/publish.yml` for the current workspace.
+    #[bake::task]
+    pub fn workflow(
+        context: &mut Context,
+        #[bake(default = "publish.yml")] filename: String,
+        #[bake(default = "main")] branch: String,
+        #[bake(default = false)] force: bool,
+    ) -> Result<String> {
+        let packages = cargo_helpers::workspace_packages(context)?;
+        if packages.is_empty() {
+            return Err(Error::new("the workspace has no publishable packages"));
+        }
+        github_helpers::validate_branch(&branch)?;
+        if PathBuf::from(&filename).components().count() != 1
+            || filename.is_empty()
+            || !filename.ends_with(".yml") && !filename.ends_with(".yaml")
+        {
+            return Err(Error::new(
+                "workflow filename must be a single .yml or .yaml filename",
+            ));
         }
 
-        /// Increment the minor component and reset patch to zero.
-        #[bake::task(name = "releases:version:minor")]
-        pub fn minor(context: &mut Context) -> Result<Value> {
-            crate::version::increment(context, crate::version::Component::Minor)
+        let contents = cargo_helpers::publish_workflow(&packages, &branch)?;
+        let path = context
+            .root()
+            .join(".github")
+            .join("workflows")
+            .join(filename);
+        let parent = path
+            .parent()
+            .unwrap_or_else(|| unreachable!("workflow paths always have a parent"));
+        fs::create_dir_all(parent)?;
+
+        if path.exists() {
+            let existing = fs::read_to_string(&path)?;
+            if existing == contents {
+                return Ok(format!(
+                    "{} already matches the generated workflow",
+                    path.display()
+                ));
+            }
+            if !force {
+                return Err(Error::new(format!(
+                    "{} already exists and differs; review it, or pass --force true to replace it",
+                    path.display()
+                )));
+            }
         }
 
-        /// Increment the major component and reset minor and patch to zero.
-        #[bake::task(name = "releases:version:major")]
-        pub fn major(context: &mut Context) -> Result<Value> {
-            crate::version::increment(context, crate::version::Component::Major)
+        write_workflow_file(&path, &contents)?;
+        Ok(format!(
+            "Generated {} for {} package(s)",
+            path.display(),
+            packages.len()
+        ))
+    }
+
+    fn write_workflow_file(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
+        #[cfg(test)]
+        if std::env::var_os("BAKE_TEST_WORKFLOW_WRITE_FAILURE").is_some() {
+            return Err(std::io::Error::other("injected workflow write failure"));
         }
 
-        /// Set the workspace to an explicit stable version greater than its current version.
-        #[bake::task(name = "releases:version:bump")]
-        pub fn bump(
+        fs::write(path, contents)
+    }
+
+    /// GitHub repository ruleset and environment setup tasks.
+    pub mod github {
+        use super::super::*;
+
+        /// Show the desired repository rulesets and publishing environment.
+        #[bake::task]
+        #[allow(clippy::too_many_arguments)]
+        pub fn plan(
             context: &mut Context,
-            #[bake(
-                named,
-                help = "New stable workspace version in MAJOR.MINOR.PATCH form."
-            )]
-            version: String,
+            #[bake(default = "")] repository: String,
+            #[bake(default = "main")] branch: String,
+            #[bake(default = 1)] approvals: u32,
+            checks: Vec<String>,
+            reviewers: Vec<String>,
+            wait_timer: Option<u32>,
+            #[bake(default = "crates-io")] environment: String,
         ) -> Result<Value> {
-            crate::version::set(context, &version)
+            let repository = github_helpers::Repository::resolve(context, &repository)?;
+            github_helpers::validate_setup(
+                &branch,
+                approvals,
+                &checks,
+                &reviewers,
+                wait_timer,
+                &environment,
+            )?;
+            let packages = cargo_helpers::workspace_packages(context)?;
+            if packages.is_empty() {
+                return Err(Error::new("the workspace has no publishable packages"));
+            }
+            let checks = github_helpers::effective_checks(&checks);
+            Ok(github_helpers::setup_plan(
+                &repository,
+                &branch,
+                approvals,
+                &checks,
+                &reviewers,
+                wait_timer,
+                &environment,
+            ))
+        }
+
+        /// Apply the managed rulesets and create/update the publishing environment.
+        /// Run `releases:cargo:setup:github:plan` first and review its output.
+        #[bake::task]
+        #[allow(clippy::too_many_arguments)]
+        pub fn apply(
+            context: &mut Context,
+            #[bake(default = "")] repository: String,
+            #[bake(default = "main")] branch: String,
+            #[bake(default = 1)] approvals: u32,
+            checks: Vec<String>,
+            reviewers: Vec<String>,
+            wait_timer: Option<u32>,
+            #[bake(default = "crates-io")] environment: String,
+        ) -> Result<Value> {
+            let repository = github_helpers::Repository::resolve(context, &repository)?;
+            github_helpers::validate_setup(
+                &branch,
+                approvals,
+                &checks,
+                &reviewers,
+                wait_timer,
+                &environment,
+            )?;
+            let checks = github_helpers::effective_checks(&checks);
+            github_helpers::apply_setup(
+                context,
+                &repository,
+                &branch,
+                approvals,
+                &checks,
+                &reviewers,
+                wait_timer,
+                &environment,
+            )
         }
     }
 }
 
+/// Configure crates.io's GitHub Actions trusted publisher for one package.
+pub mod trusted_publishing {
+    use super::*;
+
+    /// Show the trusted publisher configuration that would be registered.
+    #[bake::task]
+    pub fn plan(
+        context: &mut Context,
+        package: String,
+        #[bake(default = "publish.yml")] workflow: String,
+        #[bake(default = "crates-io")] environment: String,
+    ) -> Result<Value> {
+        cargo_helpers::package_by_name(context, &package)?;
+        let repository = github_helpers::Repository::from_origin(context)?;
+        crates_io::trusted_publisher_plan(&package, &repository, &workflow, &environment)
+    }
+
+    /// Add the GitHub Actions trusted publisher configuration on crates.io.
+    #[bake::task]
+    pub fn configure(
+        context: &mut Context,
+        package: String,
+        #[bake(default = "publish.yml")] workflow: String,
+        #[bake(default = "crates-io")] environment: String,
+    ) -> Result<Value> {
+        cargo_helpers::package_by_name(context, &package)?;
+        let repository = github_helpers::Repository::from_origin(context)?;
+        crates_io::configure_trusted_publisher(&package, &repository, &workflow, &environment)
+    }
+
+    /// Enable or disable crates.io's trusted-publishing-only requirement.
+    #[bake::task]
+    pub fn require(
+        context: &mut Context,
+        package: String,
+        #[bake(default = true)] required: bool,
+    ) -> Result<Value> {
+        cargo_helpers::package_by_name(context, &package)?;
+        crates_io::set_trusted_publishing_only(&package, required)
+    }
+}
+
+/// Change the shared stable version of the publishable Cargo workspace packages.
+pub mod version {
+    use bake::{Context, Result, Value};
+
+    /// Increment the patch component of the workspace version.
+    #[bake::task(name = "releases:version:patch")]
+    pub fn patch(context: &mut Context) -> Result<Value> {
+        crate::version_support::increment(context, crate::version_support::Component::Patch)
+    }
+
+    /// Increment the minor component and reset patch to zero.
+    #[bake::task(name = "releases:version:minor")]
+    pub fn minor(context: &mut Context) -> Result<Value> {
+        crate::version_support::increment(context, crate::version_support::Component::Minor)
+    }
+
+    /// Increment the major component and reset minor and patch to zero.
+    #[bake::task(name = "releases:version:major")]
+    pub fn major(context: &mut Context) -> Result<Value> {
+        crate::version_support::increment(context, crate::version_support::Component::Major)
+    }
+
+    /// Set the workspace to an explicit stable version greater than its current version.
+    #[bake::task(name = "releases:version:bump")]
+    pub fn bump(
+        context: &mut Context,
+        #[bake(
+            named,
+            help = "New stable workspace version in MAJOR.MINOR.PATCH form."
+        )]
+        version: String,
+    ) -> Result<Value> {
+        crate::version_support::set(context, &version)
+    }
+}
+
+/// Compatibility paths for callers using the former namespace wrappers.
+#[doc(hidden)]
+pub mod releases {
+    pub mod cargo {
+        pub use crate::{
+            bootstrap, bootstrap_task, create_package_archive, create_package_archive_task,
+            packages, packages_task, publish, publish_pending, publish_pending_task, publish_task,
+            publish_workspace, publish_workspace_task, release, release_task, setup,
+            trusted_publishing,
+        };
+    }
+    pub use crate::version;
+}
+
 #[cfg(test)]
 mod tests {
-    use super::releases::cargo as tasks;
-    use super::releases::version as version_tasks;
+    use super as tasks;
+    use super::version as version_tasks;
     use crate::test_support::{Environment, Project, http_server};
     use bake::Registry;
     use serde_json::json;
