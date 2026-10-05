@@ -13,10 +13,24 @@ bake-releases-cargo = { version = "0.1" }
 use bake_releases_cargo as _;
 ```
 
-When working from this repository, check out
-[bake-rust](https://github.com/socketry/bake-rust) beside it as `../bake-rust`.
-The path dependency uses the matching registry version when this crate is published.
-Follow the shared [Socketry Rust conventions](https://github.com/socketry/bake-rust/blob/main/conventions.md).
+Follow the shared [Socketry Rust conventions](https://github.com/socketry/socketry-project-rust/blob/main/context/conventions.md).
+
+## Development
+
+Install the Bake launcher and run the standard project checks:
+
+```sh
+cargo install socketry-cargo-bake --locked
+cargo bake test:coverage
+```
+
+The test workflow runs formatting, Clippy, and complete source-region coverage
+on pull requests and pushes. The publishing workflow uses shared Bake tasks to
+validate and publish reviewed releases. It follows the canonical workflow
+documented by [`bake-cargo`](https://github.com/socketry/bake-cargo-rust/blob/main/readme.md#github-workflow-and-repository-settings):
+pull requests use `test.yml` for tests, while pushes run ordinary workspace
+tests in the publish check before publishing. `test.yml` also runs coverage on
+pushes to `main`.
 
 ## Inspect and package
 
@@ -55,9 +69,13 @@ cargo bake releases:cargo:setup:workflow
 It refuses to replace a different existing file. Use `--force true` only after
 reviewing the generated output. The workflow validates that a tag named
 `vVERSION` matches every publishable workspace package, runs workspace checks,
-exchanges a GitHub OIDC token for a short-lived crates.io token, and publishes
-the workspace. It uses the GitHub
+then runs `releases:cargo:publish:pending` and
+`releases:cargo:publish:workspace` to find and publish packages through Bake
+tasks. GitHub Actions exchanges an OIDC token for a short-lived crates.io token.
+The workflow uses the GitHub
 environment `crates-io` and workflow file `publish.yml` by default.
+See [Publishing workflows](context/publishing.md) for how this tag-based
+workflow relates to the repository's standard release workflow.
 
 Plan repository protections before applying them:
 
@@ -129,3 +147,14 @@ package version fields and local dependency requirements, but does not commit
 changes or publish GitHub Releases. It does not configure branch rulesets other
 than its named managed rulesets, and GitHub may require repository or organization
 plan features for some settings.
+
+## Contributing
+
+Please open an issue or pull request on
+[GitHub](https://github.com/socketry/bake-releases-cargo-rust).
+
+### Agent Context
+
+Before contributing, read `agents.md` and the relevant context files it links.
+If they are missing or out of date, run `cargo bake agent:context:install` to
+install shared context and skills and refresh the index.

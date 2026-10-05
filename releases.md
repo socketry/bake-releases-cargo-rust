@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Generate tag-based publishing workflows that perform registry checks and package publication through Bake tasks.
+
 ## v0.1.0
 
 - Move the Cargo, GitHub, and crates.io release tasks into their own repository.
