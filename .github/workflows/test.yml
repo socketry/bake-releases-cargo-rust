@@ -29,3 +29,15 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Run tests and require complete source-region coverage
         run: cargo bake --locked test:coverage --all-targets true
+
+  test-result:
+    if: always()
+    needs: [test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require successful tests and coverage
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$JOB_RESULTS" | jq -e 'all(.[]; .result == "success")'
