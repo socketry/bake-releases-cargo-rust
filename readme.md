@@ -97,6 +97,10 @@ Prepare a release with `cargo bake cargo:version:patch` (or `minor`, `major`, or
 
 See [releases.md](releases.md) for the full release history.
 
+### v0.2.2
+
+- Expose task APIs at the crate root while preserving legacy function and descriptor paths and registered command names.
+
 ### v0.2.1
 
 - Adopt `socketry-project` 0.3.7 for shared project tasks and Markdown normalization.
@@ -109,13 +113,6 @@ See [releases.md](releases.md) for the full release history.
 - Add `releases:cargo:publish:pending` and `releases:cargo:publish:workspace` tasks.
 - Include publishing guidance in the published package's agent context.
 - Clean up GitHub API subprocesses when writing their request body fails.
-
-### v0.1.0
-
-- Move the Cargo, GitHub, and crates.io release tasks into their own repository.
-- Support Cargo workspace discovery, publishing workflow setup, and trusted publishing.
-- Add shared workspace version bumps and a tag-based release task.
-- Skip package versions already published when running generated release workflows.
 
 <!-- bake-readme:releases:end -->
 

@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## v0.2.2
 
 - Expose task APIs at the crate root while preserving legacy function and descriptor paths and registered command names.
 

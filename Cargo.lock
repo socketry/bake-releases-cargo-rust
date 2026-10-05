@@ -116,7 +116,7 @@ dependencies = [
 
 [[package]]
 name = "bake-releases-cargo"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bake",
  "serde",
