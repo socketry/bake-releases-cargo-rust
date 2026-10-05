@@ -1,0 +1,12 @@
+[package]
+name = "bake-releases-cargo-project"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+bake = ">=0.18.0"
+bake-cargo = "0.4"
+bake-test-rust = "0.3"
+bake-releases-cargo = { path = ".." }
+socketry-project = ">=0.3.3"

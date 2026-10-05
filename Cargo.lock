@@ -9,8 +9,72 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "aho-corasick"
+version = "1.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c982642fa9e8606056828ee9a8505737230110bb1099153c79efe865c59d12ba"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "bake"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f96c84418680954a2d9c8fe9afffb35aafb0b7086cb3cc141d613a2f0a74b42"
+dependencies = [
+ "bake-macros",
+ "linkme",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "bake-agent-context"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "386910c08614146515e754bf6208aedba73abdb9a2767e8bd5c2d997845c84ef"
+dependencies = [
+ "bake",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "socketry-markdown",
+]
+
+[[package]]
+name = "bake-cargo"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "096c01e12f3fcba42c7df25b3e825c3e1e55c6cd5cd0b123e843cd6f954aff08"
+dependencies = [
+ "bake",
+ "bake-license",
+ "bake-releases",
+ "serde",
+ "serde_json",
+ "socketry-markdown",
+ "tempfile",
+ "toml_edit",
+ "ureq",
+]
+
+[[package]]
+name = "bake-license"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4877b435fe237311d88e546e8fb2b4a9021aff3550b625b8286e27da0ec693fd"
+dependencies = [
+ "bake",
+ "socketry-markdown",
+ "tempfile",
+]
+
+[[package]]
 name = "bake-macros"
-version = "0.1.0"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "696dc147efb72a305f77a058388c94e651cd3586222a0ccfe3fcf145c7143242"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -18,15 +82,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "bake-readme"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f9ab6aa18fb34ab56c06cb49d87f7eb19cd6bfe16d8553856fbdd6380f39634"
+dependencies = [
+ "bake",
+ "serde_json",
+ "socketry-markdown",
+ "tempfile",
+]
+
+[[package]]
+name = "bake-releases"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54d725086b889120c08f4160d40ac117a029d41f5e0d96c4174922abfac61d83"
+dependencies = [
+ "bake",
+ "socketry-markdown",
+ "tempfile",
+]
+
+[[package]]
 name = "bake-releases-cargo"
 version = "0.1.0"
 dependencies = [
+ "bake",
  "serde",
  "serde_json",
- "socketry-bake",
  "tempfile",
  "toml_edit",
  "ureq",
+]
+
+[[package]]
+name = "bake-releases-cargo-project"
+version = "0.0.0"
+dependencies = [
+ "bake",
+ "bake-cargo",
+ "bake-releases-cargo",
+ "bake-test-rust",
+ "socketry-project",
+]
+
+[[package]]
+name = "bake-test-rust"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9d5ceec9cc08a3bb421dd3755ad9e073831934793aa88d8f55095ad98c1dc45"
+dependencies = [
+ "bake",
+ "serde_json",
+ "toml_edit",
 ]
 
 [[package]]
@@ -43,9 +152,9 @@ checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
 name = "cc"
-version = "1.5.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f360145194ee8e21db5ee7f3fcd4fe52210864c75c985dae33218202c8bbe040"
+checksum = "f74872d07caf508b30a21f6836e7d7016a2eaf7d9ff4f48deaa58cd8a0407630"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -275,9 +384,9 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "libc"
-version = "0.2.189"
+version = "0.2.190"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+checksum = "ce5d3ddc6d3fa000eb1536d85e147bfe31aacaba692ed6a876f95cb7c855be78"
 
 [[package]]
 name = "linkme"
@@ -379,6 +488,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
+name = "regex"
+version = "1.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f020237b6c8eed93db2e2cb53c00c60a8e1bc73da7d073199a1180401450218d"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.4.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad8553b9b26413251cbf30e620595c7a41b3887f03da04579c0e6b0d6a06b4b2"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-syntax"
+version = "0.8.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
 name = "ring"
 version = "0.17.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -441,6 +579,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ryu"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
+
+[[package]]
 name = "serde"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -484,6 +628,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_yaml_ng"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b4db627b98b36d4203a7b458cf3573730f2bb591b28871d916dfa9efabfd41f"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
+]
+
+[[package]]
 name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -502,13 +659,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9395f0f0eee849a9b707b2f06bb92a6a422090e2123bb2ef8e87a0e61892a8e"
 
 [[package]]
-name = "socketry-bake"
-version = "0.1.0"
+name = "socketry-markdown"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5713ab1be01960a2cdbb85d6b696063b406300bc5a876a013e23d6e5bf94b19"
 dependencies = [
- "bake-macros",
- "linkme",
- "serde",
- "serde_json",
+ "regex",
+ "unicode-id",
+]
+
+[[package]]
+name = "socketry-project"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5f3a4391b29d2fcfe7522e3fdf651aaff9fd3de6c530a90412060b6bd1ad4e4"
+dependencies = [
+ "bake",
+ "bake-agent-context",
+ "bake-cargo",
+ "bake-license",
+ "bake-readme",
+ "bake-releases",
+ "bake-test-rust",
 ]
 
 [[package]]
@@ -617,10 +789,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
 
 [[package]]
+name = "unicode-id"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65dd75ab2d9d379dbe86d4059e91d8b5a6e7054865eaba1ddbfc7a817ff96392"
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d245f478577f809a851594d02313b640fb437e0bb33866753cff937863096954"
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
 name = "untrusted"
@@ -804,9 +988,9 @@ dependencies = [
 
 [[package]]
 name = "yoke-derive"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33811428bee40dbceb6d545e95754741d17a6aef9a4849f0fd62e2ba4f412a78"
+checksum = "ec8ebde2db3681e8c9980cc27822030e68752690ddfa9473e739aeb4dbde6d71"
 dependencies = [
  "proc-macro2",
  "quote",
