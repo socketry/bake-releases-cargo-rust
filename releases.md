@@ -1,5 +1,10 @@
 # Releases
 
+## v0.2.1
+
+- Adopt `socketry-project` 0.3.7 for shared project tasks and Markdown normalization.
+- Require the aggregate test and coverage result for pull request merges.
+
 ## v0.2.0
 
 - Migrate public task interfaces from `socketry-bake` to `bake >=0.18.0`.

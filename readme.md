@@ -1,8 +1,6 @@
 # Bake Cargo Releases
 
-`bake-releases-cargo` provides reusable Bake tasks for Cargo workspace
-releases. Tasks are registered beneath `releases:cargo`. Add the package to an
-unpublished `bake/` task binary and link it once:
+`bake-releases-cargo` provides reusable Bake tasks for Cargo workspace releases. Tasks are registered beneath `releases:cargo`. Add the package to an unpublished `bake/` task binary and link it once:
 
 ```toml
 [dependencies]
@@ -24,13 +22,7 @@ cargo install socketry-cargo-bake --locked
 cargo bake test:coverage
 ```
 
-The test workflow runs formatting, Clippy, and complete source-region coverage
-on pull requests and pushes. The publishing workflow uses shared Bake tasks to
-validate and publish reviewed releases. It follows the canonical workflow
-documented by [`bake-cargo`](https://github.com/socketry/bake-cargo-rust/blob/main/readme.md#github-workflow-and-repository-settings):
-pull requests use `test.yml` for tests, while pushes run ordinary workspace
-tests in the publish check before publishing. `test.yml` also runs coverage on
-pushes to `main`.
+The test workflow runs formatting, Clippy, and complete source-region coverage on pull requests and pushes. The publishing workflow uses shared Bake tasks to validate and publish reviewed releases. It follows the canonical workflow documented by [`bake-cargo`](https://github.com/socketry/bake-cargo-rust/blob/main/readme.md#github-workflow-and-repository-settings): pull requests use `test.yml` for tests, while pushes run ordinary workspace tests in the publish check before publishing. `test.yml` also runs coverage on pushes to `main`.
 
 ## Inspect and package
 
@@ -39,24 +31,13 @@ cargo bake releases:cargo:packages
 cargo bake releases:cargo:package socketry-bake
 ```
 
-Workspace discovery uses `cargo metadata --no-deps` and ignores packages marked
-`publish = false` or configured for no registry. Package names and versions are
-read from Cargo metadata.
+Workspace discovery uses `cargo metadata --no-deps` and ignores packages marked `publish = false` or configured for no registry. Package names and versions are read from Cargo metadata.
 
 ## Versioning and releases
 
-The `releases:version:patch`, `minor`, and `major` tasks update the shared stable
-version of all publishable packages in the workspace. `releases:version:bump
---version X.Y.Z` sets an explicit higher version. These tasks preserve TOML
-formatting, update local path dependency requirements, and refresh `Cargo.lock`.
-They do not update `releases.md` or commit the changes; review the edits and use
-`releases:update vX.Y.Z` before committing the release.
+The `releases:version:patch`, `minor`, and `major` tasks update the shared stable version of all publishable packages in the workspace. `releases:version:bump --version X.Y.Z` sets an explicit higher version. These tasks preserve TOML formatting, update local path dependency requirements, and refresh `Cargo.lock`. They do not update `releases.md` or commit the changes; review the edits and use `releases:update vX.Y.Z` before committing the release.
 
-After the version and release notes are committed, `releases:cargo:release`
-packages the workspace, creates an annotated `vX.Y.Z` tag, and pushes it to
-`origin`. The tag triggers the configured GitHub Actions workflow, which checks
-that every publishable package has that version and publishes the workspace.
-Pass `--push false` to create the tag locally without triggering publication.
+After the version and release notes are committed, `releases:cargo:release` packages the workspace, creates an annotated `vX.Y.Z` tag, and pushes it to `origin`. The tag triggers the configured GitHub Actions workflow, which checks that every publishable package has that version and publishes the workspace. Pass `--push false` to create the tag locally without triggering publication.
 
 ## GitHub workflow and repository settings
 
@@ -66,16 +47,7 @@ Generate `.github/workflows/publish.yml` after reviewing the existing workflow:
 cargo bake releases:cargo:setup:workflow
 ```
 
-It refuses to replace a different existing file. Use `--force true` only after
-reviewing the generated output. The workflow validates that a tag named
-`vVERSION` matches every publishable workspace package, runs workspace checks,
-then runs `releases:cargo:publish:pending` and
-`releases:cargo:publish:workspace` to find and publish packages through Bake
-tasks. GitHub Actions exchanges an OIDC token for a short-lived crates.io token.
-The workflow uses the GitHub
-environment `crates-io` and workflow file `publish.yml` by default.
-See [Publishing workflows](context/publishing.md) for how this tag-based
-workflow relates to the repository's standard release workflow.
+It refuses to replace a different existing file. Use `--force true` only after reviewing the generated output. The workflow validates that a tag named `vVERSION` matches every publishable workspace package, runs workspace checks, then runs `releases:cargo:publish:pending` and `releases:cargo:publish:workspace` to find and publish packages through Bake tasks. GitHub Actions exchanges an OIDC token for a short-lived crates.io token. The workflow uses the GitHub environment `crates-io` and workflow file `publish.yml` by default. See [Publishing workflows](context/publishing.md) for how this tag-based workflow relates to the repository's standard release workflow.
 
 Plan repository protections before applying them:
 
@@ -92,24 +64,11 @@ cargo bake releases:cargo:setup:github:apply \
   --wait-timer 0
 ```
 
-If `--repository owner/name` is omitted, the GitHub repository is inferred from
-the `origin` Git remote. `--checks` is repeatable and should match status check
-names already reported by GitHub. When `--wait-timer` is omitted, the existing
-environment wait timer is left unchanged; supplying `--reviewers` replaces its
-reviewer list. Reviewers use a GitHub numeric identifier in
-`User:ID` or `Team:ID` form. The apply task requires the `gh` CLI to be installed
-and authenticated with permission to manage repository rulesets and environments.
-It creates or updates the two rulesets managed by this package and configures
-the named environment's wait timer and reviewer list. Existing managed rulesets
-are replaced with the reviewed desired settings; unrelated rulesets are left
-alone.
-When `--checks` is omitted, the ruleset requires `Publish to crates.io / check`,
-the check job generated by the workflow above.
+If `--repository owner/name` is omitted, the GitHub repository is inferred from the `origin` Git remote. `--checks` is repeatable and should match status check names already reported by GitHub. When `--wait-timer` is omitted, the existing environment wait timer is left unchanged; supplying `--reviewers` replaces its reviewer list. Reviewers use a GitHub numeric identifier in `User:ID` or `Team:ID` form. The apply task requires the `gh` CLI to be installed and authenticated with permission to manage repository rulesets and environments. It creates or updates the two rulesets managed by this package and configures the named environment's wait timer and reviewer list. Existing managed rulesets are replaced with the reviewed desired settings; unrelated rulesets are left alone. When `--checks` is omitted, the ruleset requires `Publish to crates.io / check`, the check job generated by the workflow above.
 
 ## Trusted publishing
 
-After a package has been published once, crates.io allows its owners to register
-a GitHub Actions trusted publisher. Preview and apply the configuration with:
+After a package has been published once, crates.io allows its owners to register a GitHub Actions trusted publisher. Preview and apply the configuration with:
 
 ```sh
 cargo bake releases:cargo:trusted-publishing:plan socketry-bake
@@ -117,41 +76,30 @@ export CARGO_REGISTRY_TOKEN=...
 cargo bake releases:cargo:trusted-publishing:configure socketry-bake
 ```
 
-The token must have the crates.io **Trusted Publishing** endpoint scope. For
-`bootstrap`, it also needs permission to publish the selected crate because the
-task passes the same `CARGO_REGISTRY_TOKEN` to Cargo and the crates.io API. The
-request uses Cargo's raw token value in the `Authorization` header. It is read
-from the environment, never placed in command arguments or printed. The desired
-configuration is inferred from `origin` and includes `publish.yml` and
-`crates-io` by default. Re-running configuration is idempotent.
+The token must have the crates.io **Trusted Publishing** endpoint scope. For `bootstrap`, it also needs permission to publish the selected crate because the task passes the same `CARGO_REGISTRY_TOKEN` to Cargo and the crates.io API. The request uses Cargo's raw token value in the `Authorization` header. It is read from the environment, never placed in command arguments or printed. The desired configuration is inferred from `origin` and includes `publish.yml` and `crates-io` by default. Re-running configuration is idempotent.
 
-For a crate that has not yet been published, `releases:cargo:bootstrap PACKAGE`
-performs the initial `cargo publish --locked --package PACKAGE`, then registers
-the trusted publisher. This is an explicit publication task: review package
-contents and release state first. If the upload succeeds but publisher setup
-fails, the error identifies the follow-up configure task. It does not enable
-trusted-publishing-only mode automatically. Once the GitHub workflow succeeds,
-you can enable that registry requirement:
+For a crate that has not yet been published, `releases:cargo:bootstrap PACKAGE` performs the initial `cargo publish --locked --package PACKAGE`, then registers the trusted publisher. This is an explicit publication task: review package contents and release state first. If the upload succeeds but publisher setup fails, the error identifies the follow-up configure task. It does not enable trusted-publishing-only mode automatically. Once the GitHub workflow succeeds, you can enable that registry requirement:
 
 ```sh
 cargo bake releases:cargo:trusted-publishing:require socketry-bake --required true
 ```
 
-Keep that setting disabled until the configured workflow has successfully
-published. The registry setting is reversible with `--required false`.
+Keep that setting disabled until the configured workflow has successfully published. The registry setting is reversible with `--required false`.
 
 ## Scope
 
-The release integration supports crates.io and GitHub Actions. It edits Cargo
-package version fields and local dependency requirements, but does not commit
-changes or publish GitHub Releases. It does not configure branch rulesets other
-than its named managed rulesets, and GitHub may require repository or organization
-plan features for some settings.
+The release integration supports crates.io and GitHub Actions. It edits Cargo package version fields and local dependency requirements, but does not commit changes or publish GitHub Releases. It does not configure branch rulesets other than its named managed rulesets, and GitHub may require repository or organization plan features for some settings.
 
 ## Releases
 
 <!-- bake-readme:releases:start -->
+
 See [releases.md](releases.md) for the full release history.
+
+### v0.2.1
+
+- Adopt `socketry-project` 0.3.7 for shared project tasks and Markdown normalization.
+- Require the aggregate test and coverage result for pull request merges.
 
 ### v0.2.0
 
@@ -167,15 +115,13 @@ See [releases.md](releases.md) for the full release history.
 - Support Cargo workspace discovery, publishing workflow setup, and trusted publishing.
 - Add shared workspace version bumps and a tag-based release task.
 - Skip package versions already published when running generated release workflows.
+
 <!-- bake-readme:releases:end -->
 
 ## Contributing
 
-Please open an issue or pull request on
-[GitHub](https://github.com/socketry/bake-releases-cargo-rust).
+Please open an issue or pull request on [GitHub](https://github.com/socketry/bake-releases-cargo-rust).
 
 ### Agent Context
 
-Before contributing, read `agents.md` and the relevant context files it links.
-If they are missing or out of date, run `cargo bake agent:context:install` to
-install shared context and skills and refresh the index.
+Run `cargo bake agent:context:install` to install shared context and skills. Read `.agents/context/index.md` to find relevant guides, follow `agents.md` if present, and apply skills under `.agents/skills/`. The installer preserves repository-owned `agents.md`; it does not create or regenerate that file.
