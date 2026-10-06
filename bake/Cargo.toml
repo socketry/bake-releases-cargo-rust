@@ -9,4 +9,4 @@ bake = "0.19"
 bake-cargo = "0.4"
 bake-test-rust = "0.3"
 bake-releases-cargo = { path = ".." }
-socketry-project = ">=0.3.7"
+socketry-project = ">=0.3.9"
